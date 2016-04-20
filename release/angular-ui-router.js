@@ -3311,54 +3311,59 @@ function $StateProvider(   $urlRouterProvider,   $urlMatcherFactory) {
           exiting.locals = null;
         }
 
-        // Enter 'to' states not kept
-        $timeout(function() {
+        return $q(function(resolve) {
 
-          for (l = keep; l < toPath.length; l++) {
-            entering = toPath[l];
-            entering.locals = toLocals[l];
-            if (entering.self.onEnter) {
-              $injector.invoke(entering.self.onEnter, entering.self, entering.locals.globals);
+          $timeout(function () {
+
+            // Enter 'to' states not kept
+            for (l = keep; l < toPath.length; l++) {
+              entering = toPath[l];
+              entering.locals = toLocals[l];
+              if (entering.self.onEnter) {
+                $injector.invoke(entering.self.onEnter, entering.self, entering.locals.globals);
+              }
             }
-          }
 
-          // Run it again, to catch any transitions in callbacks
-          if ($state.transition !== transition) return TransitionSuperseded;
+            // Run it again, to catch any transitions in callbacks
+            if ($state.transition !== transition) {
+              return resolve(TransitionSuperseded);
+            }
 
-          // Update globals in $state
-          $state.$current = to;
-          $state.current = to.self;
-          $state.params = toParams;
-          copy($state.params, $stateParams);
-          $state.transition = null;
+            // Update globals in $state
+            $state.$current = to;
+            $state.current = to.self;
+            $state.params = toParams;
+            copy($state.params, $stateParams);
+            $state.transition = null;
 
-          if (options.location && to.navigable) {
-            $urlRouter.push(to.navigable.url, to.navigable.locals.globals.$stateParams, {
-              $$avoidResync: true, replace: options.location === 'replace'
-            });
-          }
+            if (options.location && to.navigable) {
+              $urlRouter.push(to.navigable.url, to.navigable.locals.globals.$stateParams, {
+                $$avoidResync: true, replace: options.location === 'replace'
+              });
+            }
 
-          if (options.notify) {
-            /**
-             * @ngdoc event
-             * @name ui.router.state.$state#$stateChangeSuccess
-             * @eventOf ui.router.state.$state
-             * @eventType broadcast on root scope
-             * @description
-             * Fired once the state transition is **complete**.
-             *
-             * @param {Object} event Event object.
-             * @param {State} toState The state being transitioned to.
-             * @param {Object} toParams The params supplied to the `toState`.
-             * @param {State} fromState The current state, pre-transition.
-             * @param {Object} fromParams The params supplied to the `fromState`.
-             */
-            $rootScope.$broadcast('$stateChangeSuccess', to.self, toParams, from.self, fromParams);
-          }
-          $urlRouter.update(true);
+            if (options.notify) {
+              /**
+               * @ngdoc event
+               * @name ui.router.state.$state#$stateChangeSuccess
+               * @eventOf ui.router.state.$state
+               * @eventType broadcast on root scope
+               * @description
+               * Fired once the state transition is **complete**.
+               *
+               * @param {Object} event Event object.
+               * @param {State} toState The state being transitioned to.
+               * @param {Object} toParams The params supplied to the `toState`.
+               * @param {State} fromState The current state, pre-transition.
+               * @param {Object} fromParams The params supplied to the `fromState`.
+               */
+              $rootScope.$broadcast('$stateChangeSuccess', to.self, toParams, from.self, fromParams);
+            }
+            $urlRouter.update(true);
 
-          return $state.current;
-        }, 300);
+            resolve($state.current);
+          }, 300);
+        });
       }, function (error) {
         if ($state.transition !== transition) return TransitionSuperseded;
 
